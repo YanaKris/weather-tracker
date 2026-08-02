@@ -1,0 +1,5 @@
+# Зависимости для разработки (не нужны приложению в проде).
+# Установка всего сразу:  pip install -r requirements-dev.txt
+-r requirements.txt
+pytest
+ruff
