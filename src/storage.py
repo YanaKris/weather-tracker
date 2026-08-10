@@ -48,3 +48,22 @@ def last_two(city: str, db_path: str = DB_PATH) -> list[dict]:
             (city,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def summary_by_city(db_path: str = DB_PATH) -> list[dict]:
+    """Сводная статистика температуры по каждому городу за всю историю."""
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT city,
+                   COUNT(*) AS measurements,
+                   ROUND(AVG(temperature), 1) AS avg_t,
+                   MIN(temperature) AS min_t,
+                   MAX(temperature) AS max_t
+            FROM observations
+            GROUP BY city
+            ORDER BY avg_t DESC
+            """
+        ).fetchall()
+    return [dict(row) for row in rows]
