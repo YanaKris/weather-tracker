@@ -1,5 +1,11 @@
 """Transform: расчёт изменений и сборка Markdown-отчёта."""
 
+import sys
+from pathlib import Path
+from typing import TextIO
+
+REPORT_PATH = "report.md"
+
 
 def compute_delta(previous: dict, current: dict) -> dict:
     """Возвращает изменение температуры и ветра между двумя замерами."""
@@ -49,3 +55,17 @@ def build_summary_markdown(summary: list[dict]) -> str:
             f"| {row['avg_t']} °C | {row['min_t']} °C | {row['max_t']} °C |"
         )
     return "\n".join(lines)
+
+
+def write_report(markdown: str, path: str | Path = REPORT_PATH) -> None:
+    """Сохраняет отчёт всегда в UTF-8: локаль ОС может не знать ↑ и ↓."""
+    Path(path).write_text(markdown + "\n", encoding="utf-8", newline="\n")
+
+
+def print_report(markdown: str, stream: TextIO | None = None) -> None:
+    """Печатает отчёт, переведя поток в UTF-8: на cp1251 стрелки роняют вывод."""
+    stream = sys.stdout if stream is None else stream
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
+    stream.write(markdown + "\n")
