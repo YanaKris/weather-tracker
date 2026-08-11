@@ -1,9 +1,13 @@
 import sqlite3
+from pathlib import Path
 
-DB_PATH = "data/weather.db"
+from src.paths import DATA_DIR
+
+DB_PATH = DATA_DIR / "weather.db"
 
 
-def init_db(db_path: str = DB_PATH) -> None:
+def init_db(db_path: str | Path = DB_PATH) -> None:
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
@@ -20,20 +24,30 @@ def init_db(db_path: str = DB_PATH) -> None:
         )
 
 
-def save_record(record: dict, db_path: str = DB_PATH) -> None:
-    """Вставляет один замер; повтор той же пары city+time игнорируется."""
+def save_record(record: dict, db_path: str | Path = DB_PATH) -> None:
+    """Вставляет один замер; повтор той же пары city+time обновляет значения.
+
+    Ключ дедупликации — момент замера от API, поэтому дубликаты не плодятся.
+    Но если API уточнил значения за тот же момент, побеждает свежее: с
+    INSERT OR IGNORE уточнение молча терялось.
+    """
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
-            INSERT OR IGNORE INTO observations
+            INSERT INTO observations
                 (city, time, latitude, longitude, temperature, wind_speed)
             VALUES (:city, :time, :latitude, :longitude, :temperature, :wind_speed)
+            ON CONFLICT(city, time) DO UPDATE SET
+                latitude = excluded.latitude,
+                longitude = excluded.longitude,
+                temperature = excluded.temperature,
+                wind_speed = excluded.wind_speed
             """,
             record,
         )
 
 
-def last_two(city: str, db_path: str = DB_PATH) -> list[dict]:
+def last_two(city: str, db_path: str | Path = DB_PATH) -> list[dict]:
     """Возвращает до двух последних по времени замеров города (новейший первым)."""
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -50,7 +64,7 @@ def last_two(city: str, db_path: str = DB_PATH) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def summary_by_city(db_path: str = DB_PATH) -> list[dict]:
+def summary_by_city(db_path: str | Path = DB_PATH) -> list[dict]:
     """Сводная статистика температуры по каждому городу за всю историю."""
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row

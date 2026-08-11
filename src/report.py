@@ -4,7 +4,9 @@ import sys
 from pathlib import Path
 from typing import TextIO
 
-REPORT_PATH = "report.md"
+from src.paths import PROJECT_ROOT
+
+REPORT_PATH = PROJECT_ROOT / "report.md"
 
 
 def compute_delta(previous: dict, current: dict) -> dict:
