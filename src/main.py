@@ -1,5 +1,8 @@
+import sys
 from datetime import datetime
 from pathlib import Path
+
+import requests
 
 from src.config import CITIES
 from src.fetch import fetch_weather
@@ -17,7 +20,6 @@ from src.storage import DB_PATH, init_db, last_two, save_record, summary_by_city
 def collect_current_rows(
     cities: list[dict], db_path: str | Path = DB_PATH
 ) -> list[dict]:
-
     rows = []
     for city in cities:
         recent = last_two(city["name"], db_path)
@@ -41,7 +43,6 @@ def collect_current_rows(
 def build_report(
     rows: list[dict], summary: list[dict], now: datetime | None = None
 ) -> str:
-
     if now is None:
         now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M")
@@ -63,7 +64,12 @@ def build_report(
 def main(db_path: str | Path = DB_PATH, report_path: str | Path = REPORT_PATH) -> None:
     init_db(db_path)
     for city in CITIES:
-        save_record(fetch_weather(city), db_path)
+        try:
+            record = fetch_weather(city)
+        except requests.RequestException as exc:
+            print(f"Пропускаю {city['name']}: {exc}", file=sys.stderr)
+            continue
+        save_record(record, db_path)
 
     rows = collect_current_rows(CITIES, db_path)
     summary = summary_by_city(db_path)
