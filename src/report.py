@@ -1,14 +1,14 @@
-"""Transform: расчёт изменений и сборка Markdown-отчёта."""
-
 import sys
 from pathlib import Path
 from typing import TextIO
 
-REPORT_PATH = "report.md"
+from src.paths import PROJECT_ROOT
+
+REPORT_PATH = PROJECT_ROOT / "report.md"
 
 
 def compute_delta(previous: dict, current: dict) -> dict:
-    """Возвращает изменение температуры и ветра между двумя замерами."""
+
     temp = current["temperature"] - previous["temperature"]
     wind = current["wind_speed"] - previous["wind_speed"]
     return {
@@ -18,7 +18,7 @@ def compute_delta(previous: dict, current: dict) -> dict:
 
 
 def _format_change(delta: float | None) -> str:
-    """Готовит текст для колонки «Изменение»: со знаком и стрелкой или «—»."""
+
     if delta is None:
         return "—"
     if delta > 0:
@@ -29,7 +29,7 @@ def _format_change(delta: float | None) -> str:
 
 
 def build_markdown(rows: list[dict]) -> str:
-    """Собирает Markdown-таблицу текущих замеров по городам."""
+
     lines = [
         "| Город | Температура | Изменение | Ветер |",
         "| --- | --- | --- | --- |",
@@ -44,7 +44,7 @@ def build_markdown(rows: list[dict]) -> str:
 
 
 def build_summary_markdown(summary: list[dict]) -> str:
-    """Собирает Markdown-таблицу сводной статистики по городам."""
+
     lines = [
         "| Город | Замеров | Средняя | Минимум | Максимум |",
         "| --- | --- | --- | --- | --- |",
@@ -58,7 +58,7 @@ def build_summary_markdown(summary: list[dict]) -> str:
 
 
 def write_report(markdown: str, path: str | Path = REPORT_PATH) -> None:
-    """Сохраняет отчёт всегда в UTF-8: локаль ОС может не знать ↑ и ↓."""
+
     Path(path).write_text(markdown + "\n", encoding="utf-8", newline="\n")
 
 

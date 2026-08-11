@@ -24,7 +24,7 @@ def test_saved_record_can_be_read_back(tmp_path):
     assert result[0] == record
 
 
-def test_duplicate_city_time_is_ignored(tmp_path):
+def test_duplicate_city_time_does_not_create_second_row(tmp_path):
     db_path = tmp_path / "test.db"
     init_db(db_path)
     record = make_record()
@@ -33,6 +33,32 @@ def test_duplicate_city_time_is_ignored(tmp_path):
     save_record(record, db_path)
 
     assert len(last_two("Москва", db_path)) == 1
+
+
+def test_revised_measurement_refreshes_values(tmp_path):
+    """Тот же момент замера с уточнёнными значениями — в базе остаётся свежее."""
+    db_path = tmp_path / "test.db"
+    init_db(db_path)
+    save_record(make_record(), db_path)
+    revised = make_record()
+    revised["temperature"] = 22.0
+    revised["wind_speed"] = 4.1
+
+    save_record(revised, db_path)
+
+    rows = last_two("Москва", db_path)
+    assert len(rows) == 1, "уточнение не должно плодить второй замер за тот же момент"
+    assert rows[0]["temperature"] == 22.0
+    assert rows[0]["wind_speed"] == 4.1
+
+
+def test_init_db_creates_missing_parent_dir(tmp_path):
+    """sqlite не создаёт каталоги сам — иначе первый запуск падает OperationalError."""
+    db_path = tmp_path / "nested" / "weather.db"
+
+    init_db(db_path)
+
+    assert db_path.exists()
 
 
 def make_record_summary(time, temperature):

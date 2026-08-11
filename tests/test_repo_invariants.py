@@ -1,5 +1,3 @@
-"""Инварианты репозитория, от которых зависит работа пайплайна (см. PLAN.md)."""
-
 import subprocess
 from pathlib import Path
 
