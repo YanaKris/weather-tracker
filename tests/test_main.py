@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from src.main import build_report, collect_current_rows
+import requests
+
+from src.main import build_report, collect_current_rows, main
 from src.storage import init_db, save_record
 
 MOSCOW = {"name": "Москва", "latitude": 55.75, "longitude": 37.62}
@@ -88,3 +90,22 @@ def test_build_report_contains_both_sections_with_tables():
     assert "| Москва | 21.5 °C | +1.5 ↑ | 3.5 м/с |" in report
     assert "## Сводка за всё время наблюдений" in report
     assert "| Москва | 2 | 20.8 °C | 20.0 °C | 21.5 °C |" in report
+
+
+def test_main_skips_city_when_fetch_fails(tmp_path, monkeypatch):
+    """Сетевая ошибка по одному городу не должна ронять весь прогон."""
+    db_path = tmp_path / "test.db"
+    report_path = tmp_path / "report.md"
+
+    def flaky_fetch(city):
+        if city["name"] == "Москва":
+            raise requests.ConnectionError("network down")
+        return make_record("2026-08-11T15:00", 20.0, city=city["name"])
+
+    monkeypatch.setattr("src.main.fetch_weather", flaky_fetch)
+
+    main(db_path, report_path)
+
+    report = report_path.read_text(encoding="utf-8")
+    assert "Москва" not in report
+    assert "Санкт-Петербург" in report
