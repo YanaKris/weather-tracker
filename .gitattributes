@@ -1,0 +1,14 @@
+# Атрибуты git. Проверить, что применилось:  git check-attr -a -- <путь>
+
+# data/weather.db — SQLite-база, она коммитится между запусками (см. PLAN.md).
+# Макрос binary = -text -diff -merge, и нужны все три:
+#   -text   core.autocrlf=true иначе заменит LF на CRLF внутри бинарника и испортит базу;
+#   -diff   git не пытается показать её как текст в diff и не тратит время на бинарный патч;
+#   -merge  слияние не текстовое: git не допишет в базу маркеры конфликта, а честно
+#           попросит выбрать одну из сторон (текстового merge для SQLite не существует).
+data/weather.db binary
+
+# report.md пайплайн пишет с LF намеренно (newline="\n" в src/report.py), а
+# core.autocrlf=true обещает заменить их на CRLF при следующем checkout —
+# отсюда предупреждение «LF will be replaced by CRLF». Фиксируем LF.
+report.md text eol=lf
