@@ -1,4 +1,12 @@
-from src.report import build_markdown, build_summary_markdown, compute_delta
+import io
+
+from src.report import (
+    build_markdown,
+    build_summary_markdown,
+    compute_delta,
+    print_report,
+    write_report,
+)
 
 
 def test_compute_delta_returns_signed_changes():
@@ -43,6 +51,28 @@ def test_build_markdown_renders_table():
     )
 
 
+def _row_with_delta(delta):
+    return {
+        "city": "Москва",
+        "temperature": 17.2,
+        "temperature_delta": delta,
+        "wind_speed": 2.6,
+    }
+
+
+def test_build_markdown_shows_zero_change_without_arrow():
+    md = build_markdown([_row_with_delta(0.0)])
+
+    assert md.splitlines()[-1] == "| Москва | 17.2 °C | 0.0 | 2.6 м/с |"
+
+
+def test_build_markdown_treats_negative_zero_as_no_change():
+    # compute_delta округляет -0.04 до -0.0 — стрелка вниз тут была бы ложью
+    md = build_markdown([_row_with_delta(-0.0)])
+
+    assert md.splitlines()[-1] == "| Москва | 17.2 °C | 0.0 | 2.6 м/с |"
+
+
 def test_build_summary_markdown_renders_table():
     summary = [
         {
@@ -69,3 +99,26 @@ def test_build_summary_markdown_renders_table():
         "| Москва | 3 | 20.0 °C | 10.0 °C | 30.0 °C |\n"
         "| Новосибирск | 2 | 15.0 °C | 12.0 °C | 18.0 °C |"
     )
+
+
+def test_print_report_survives_non_utf8_console():
+    # cp1251 не знает ↑ (U+2191): без перевода потока в UTF-8 вывод падал
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1251", newline="")
+    md = build_markdown([_row_with_delta(1.5)])
+
+    print_report(md, stream)
+    stream.flush()
+
+    assert raw.getvalue().decode("utf-8") == md + "\n"
+
+
+def test_write_report_saves_utf8_regardless_of_locale(tmp_path):
+    # читаем с явной UTF-8: тест не зависит от локали машины
+    target = tmp_path / "report.md"
+    md = build_markdown([_row_with_delta(1.5)])
+
+    write_report(md, target)
+
+    assert target.read_text(encoding="utf-8") == md + "\n"
+    assert "↑" in target.read_bytes().decode("utf-8")
